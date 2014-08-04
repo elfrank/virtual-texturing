@@ -1,5 +1,5 @@
 /**
- * @author Francico Avila - http://franciscoavila.mx
+ * @author elfrank - http://franciscoavila.mx
  */
 
 (function () {
