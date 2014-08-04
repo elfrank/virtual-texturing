@@ -1,6 +1,4 @@
 external/
-models
-textures
 input/
 output/
 *.sublime*
