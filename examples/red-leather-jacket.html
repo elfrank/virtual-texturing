@@ -1,0 +1,43 @@
+<html>
+  <head>
+    <title>Virtual Textures | Example</title>
+
+    <link rel="stylesheet" type="text/css" href="css/main.css">
+  </head>
+
+  <body>
+
+    <div class="container background">  
+      <div class="header"></div>
+      <div class="content">
+        <div id="canvas_container"></div>
+      </div>
+    </div>
+
+    <script>
+
+      var dataToLoad = {
+        model: "models/0/leather-jacket.json",
+        tiles: {
+          mapDiffuse: "/examples/models/0/tiles/diffuse/",
+          mapNormal: "/examples/models/0/tiles/normal/", 
+          mapSpecular: "/examples/models/0/tiles/specular/" 
+        }
+      };
+
+    </script>
+
+    <script type="text/javascript" src="js/Detector.js"></script>
+    <script type="text/javascript" src="js/three.js"></script>
+    <script type="text/javascript" src="js/OrbitControls.js"></script>
+
+    <script type="text/javascript" src="../src/Shaders.js"></script>
+    <script type="text/javascript" src="../src/VirtualTexture.js"></script>
+
+    <script type="text/javascript" src="js/Shaders.js"></script>
+    <script type="text/javascript" src="js/Main.js"></script>
+
+  </body>
+
+  </head>
+</html>

@@ -1,0 +1,8 @@
+external/
+models
+textures
+input/
+output/
+*.sublime*
+*.swp
+.DS_Store

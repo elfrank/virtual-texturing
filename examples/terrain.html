@@ -1,0 +1,44 @@
+<html>
+  <head>
+    <title>Virtual Textures | Example</title>
+
+    <link rel="stylesheet" type="text/css" href="css/main.css">
+  </head>
+
+  <body>
+
+    <div class="container background">  
+      <div class="header"></div>
+      <div class="content">
+        <div id="canvas_container"></div>
+      </div>
+    </div>
+
+    <script type="text/javascript" src="js/Detector.js"></script>
+    <script type="text/javascript" src="js/three.js"></script>
+    <script type="text/javascript" src="js/Clock.js"></script>
+    <script type="text/javascript" src="js/FirstPersonControls.js"></script>
+
+    <script type="text/javascript" src="../src/Shaders.js"></script>
+    <script type="text/javascript" src="../src/VirtualTexture.js"></script>
+
+    <script type="text/javascript" src="js/Shaders.js"></script>
+    <script type="text/javascript" src="js/Main.js"></script>
+
+    <script>
+
+      var tileLocations = {
+        mapDiffuse: "/examples/models/terrain/tiles/diffuse/"
+      };
+
+      var geometry = new THREE.PlaneGeometry(100, 100, 100);
+
+      APP.start();
+      APP.load(geometry, tileLocations);
+      APP.run();
+
+    </script>
+  </body>
+
+  </head>
+</html>

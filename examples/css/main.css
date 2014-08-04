@@ -1,0 +1,14 @@
+html,body {
+	margin: 0;
+	padding: 0;
+	height: 100%;
+	font-family: "Courier New";
+	font-size: 12px;
+	color: #eee;
+	overflow: hidden;
+	background-color: #cccccc;
+}
+
+#id_canvas_container {
+	background-color: #ffffff;
+}
