@@ -27,14 +27,26 @@
 
     <script>
 
-      var tileLocations = {
-        mapDiffuse: "examples/models/terrain/tiles/diffuse/"
+      APP.start();
+
+      var config = {
+        enabled: true,
+        maxMipMapLevel: 4,
+        tileSize: 128,
+        tilePadding: 4,
+        cacheSize: 2048,
+        getTilePath: function(tile) {
+          var directory = '/examples/models/terrain/tiles/diffuse/';
+          var filename = (4 - tile.mipMapLevel) + '-' + tile.pageNumber + ".jpg";
+
+          return directory + filename;
+        }
       };
 
       var geometry = new THREE.PlaneGeometry(100, 100, 100);
 
-      APP.start();
-      APP.load(geometry, tileLocations);
+      APP.load(geometry, config);
+
       APP.run();
 
     </script>

@@ -15,6 +15,72 @@
   var StatusAvailable = 1;
   var StatusPendingDelete = 2;
 
+  THREE.duplicateGeometryForVirtualTexturing = function (geometry, virtualTexture) {
+
+    var shader = THREE.ShaderLib.visible_tiles;
+    var uniforms = THREE.UniformsUtils.clone(shader.uniforms);
+
+    uniforms.fVirtualTextureSize.value = {
+      x: virtualTexture.size,
+      y: virtualTexture.size
+    };
+
+    uniforms.fMaximumMipMapLevel.value = virtualTexture.maxMipMapLevel;
+    uniforms.fTileCount.value = virtualTexture.tileCount;
+
+    var parameters = {
+      uniforms: uniforms,
+      fragmentShader: shader.fragmentShader,
+      vertexShader: shader.vertexShader,
+      side: THREE.DoubleSide
+    };
+
+    var materialVT = new THREE.ShaderMaterial(parameters);
+    var meshVT = new THREE.Mesh(geometry, materialVT);
+
+    virtualTexture.tileDetermination.scene.add(meshVT);
+  };
+
+  THREE.createVirtualTextureMaterial = function (virtualTexture) {
+    var type;
+    var shader = THREE.ShaderLib.render_with_vt;
+    var uniforms = THREE.UniformsUtils.clone(shader.uniforms);
+
+    for (type in virtualTexture.cache.textures) {
+      if (virtualTexture.cache.textures.hasOwnProperty(type)) {
+        uniforms[type].value = virtualTexture.cache.textures[type];
+      }
+    }
+
+    var pageSizeInTextureSpaceXY = {
+      x: virtualTexture.cache.usablePageSize / virtualTexture.cache.size.x,
+      y: virtualTexture.cache.usablePageSize / virtualTexture.cache.size.y
+    };
+
+    // init values
+    uniforms.tCacheIndirection.value = virtualTexture.indirectionTable.texture;
+    uniforms.vCachePageSize.value = pageSizeInTextureSpaceXY;
+    uniforms.vCacheSize.value = { x: virtualTexture.cache.width, y: virtualTexture.cache.height };
+
+    uniforms.vTextureSize.value = virtualTexture.size;
+    uniforms.fMaxMipMapLevel.value = virtualTexture.maxMipMapLevel;
+
+    uniforms.uNormalScale.value = { x: 1.0, y: 1.0 };
+    uniforms.enableDiffuse.value = true;
+    uniforms.enableSpecular.value = true;
+
+    var parameters = {
+      defines: { 'VIRTUAL_TEXTURE': true },
+      uniforms: uniforms,
+      fragmentShader: shader.fragmentShader,
+      vertexShader: shader.vertexShader,
+      side: THREE.DoubleSide,
+      lights: true
+    };
+
+    return new THREE.ShaderMaterial(parameters);
+  };
+
   //
   //
   //
@@ -122,54 +188,17 @@
   //
   //
 
-  VT.Tile = function (numMipMapLevels, id, hits, parentId) {
+  VT.Tile = function (id, hits, parentId) {
     this.parentId = (undefined === parentId) ? VT.PageId.createInvalid() : parentId;
     this.id = id;
     this.hits = (undefined !== hits) ? hits : 0;
     this.pageNumber = VT.PageId.getPageNumber(id);
     this.mipMapLevel = VT.PageId.getMipMapLevel(id);
     this.loaded = false;
-    this.tileName = (numMipMapLevels - this.mipMapLevel) + '-' + this.pageNumber + ".jpg";
-    this.images = [];
-    this.partsLoaded = 0;
-    this.partsCount = 0;
+    this.image = undefined;
   };
 
   VT.Tile.prototype = {
-    load: function (locations, callback) {
-      var type, filePath, image;
-
-      var scope = this;
-      function onLoadImage() {
-        if (scope.partsCount === ++scope.partsLoaded) {
-          scope.loaded = true;
-          console.log('Tile ' + scope.pageNumber + ' at level ' + scope.mipMapLevel + ' loaded');
-
-          if (callback && ('function' === typeof callback)) {
-            callback();
-          }
-        }
-      }
-
-      try {
-        for (type in locations) {
-          if (locations.hasOwnProperty(type)) {
-            ++this.partsCount;
-            filePath = locations[type] + this.tileName;
-            image = new Image();
-
-            image.onload = onLoadImage;
-
-            image.crossOrigin = 'Anonymous';
-            image.src = filePath;
-
-            this.images.push(image);
-          }
-        }
-      } catch (e) {
-        console.log(e.stack);
-      }
-    },
 
     isLoaded: function () {
       return this.loaded;
@@ -187,14 +216,13 @@
   VT.TileQueue = function (size, locations) {
     this.maxLoading = size;
     this.onLoading = 0;
+    this.loadCount = 0;
 
     this.locations = locations;
     this.callback = null;
 
     this.content = [];
     this.sorted = false;
-
-    this.loadCount = 0;
   };
 
   VT.TileQueue.prototype.push = function (item) {
@@ -205,24 +233,32 @@
   };
 
   VT.TileQueue.prototype.process = function () {
-    if (this.onLoading < this.maxLoading) {
+
+    if ((this.onLoading < this.maxLoading) && !this.empty()) {
+      var scope = this;
       var item = this.pop();
+      var filePath = this.getTilePath(item);
 
-      if (item) {
+      var image = new Image();
+      image.crossOrigin = 'Anonymous';
 
-        this.onLoading++;
-        var scope = this;
+      this.onLoading++;
 
-        item.load(this.locations, function () {
-          scope.callback(item);
-          --scope.onLoading;
+      image.onload = function () {
 
-          ++scope.loadCount;
-          console.log("Tiles loaded count=" + scope.loadCount + " | Images loaded count=" + (scope.loadCount * 3));
+        --scope.onLoading;
+        ++scope.loadCount;
 
-          scope.process();
-        });
-      }
+        item.image = this;
+        item.loaded = true;
+
+        console.log('Tile ' + item.pageNumber + ' at level ' + item.mipMapLevel + ' loaded | Count: ' + scope.loadCount );
+
+        scope.process();
+        scope.callback(item);
+      };
+
+      image.src = filePath;
     }
   };
 
@@ -314,9 +350,7 @@
     };
 
     this.textures = {
-      tDiffuse : null,
-      tNormal : null,
-      tSpecular : null
+      tDiffuse : null
     };
 
     this.cachedPages = {};
@@ -352,6 +386,7 @@
             THREE.LinearFilter
           );
 
+          texture.generateMipmaps = false;
           texture.needsUpdate = true;
           this.textures[type] = texture;
         }
@@ -562,14 +597,14 @@
     var i;
     if (tile.loaded) {
       var gl = this.context;
-      var types = ["tDiffuse", "tNormal", "tSpecular"];
-      for (i = 0; i < tile.images.length; ++i) {
-        gl.bindTexture(gl.TEXTURE_2D, this.textures[types[i]].__webglTexture);
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, gl.RGBA, gl.UNSIGNED_BYTE, tile.images[i]);
-      }
+
+      gl.bindTexture(gl.TEXTURE_2D, this.textures.tDiffuse.__webglTexture);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, gl.RGBA, gl.UNSIGNED_BYTE, tile.image);
+
     } else {
-      for (i = 0; i < tile.images.length; ++i) {
-        console.error('Tile ' + tile.images[i].src + ' was not available yet.');
+
+      for (i = 0; i < tile.image.length; ++i) {
+        console.error('Tile ' + tile.image.src + ' was not available yet.');
       }
     }
   };
@@ -754,9 +789,10 @@
         THREE.ClampToEdgeWrapping,
         THREE.ClampToEdgeWrapping,
         THREE.NearestFilter,
-        THREE.LinearMipMapLinearFilter
+        THREE.NearestFilter
       );
 
+      this.texture.generateMipmaps = false;
       this.texture.needsUpdate = true;
     },
 
@@ -1055,8 +1091,8 @@
 
   VT.TileDetermination.prototype.init = function (_width, _height) {
     var renderTargetParameters = {
-      minFilter: THREE.LinearFilter,
-      magFilter: THREE.LinearFilter,
+      minFilter: THREE.NearestFilter,
+      magFilter: THREE.NearestFilter,
       format: THREE.RGBAFormat,
       stencilBufer: false
     };
@@ -1174,7 +1210,8 @@
     this.context = context;
 
     // init tile queue
-    this.tileQueue = new VT.TileQueue(2, params.tileLocations);
+    this.tileQueue = new VT.TileQueue(2);
+    this.tileQueue.getTilePath = params.getTilePath;
 
     var lengthPerSide = 1 << Math.log(this.tileSize) / Math.log(2) + this.maxMipMapLevel;
     this.size = lengthPerSide;
@@ -1276,7 +1313,7 @@
 
       var pageId = VT.PageId.create(0, this.indirectionTable.maxLevel);
       //var pageId = VT.PageId.create(0, 0);
-      var tile = new VT.Tile(this.maxMipMapLevel, pageId, Number.MAX_VALUE);
+      var tile = new VT.Tile(pageId, Number.MAX_VALUE);
       this.tileQueue.push(tile);
     },
 
@@ -1368,7 +1405,7 @@
                 if (!this.tileQueue.contains(newPageId)) {
                   tmpId = ((newPageId !== pageId) ? pageId : VT.PageId.createInvalid());
                   hits = this.usageTable.table[pageId].hits;
-                  tile = new VT.Tile(this.maxMipMapLevel, newPageId, hits, tmpId);
+                  tile = new VT.Tile(newPageId, hits, tmpId);
 
                   this.tileQueue.push(tile);
                   ++tilesRequestedCount;
@@ -1381,7 +1418,7 @@
 
       var cacheStatusData = this.cache.getStatus(0, 0, 0);
 
-      console.log('# Released Pages: ' + releasedPagesCount + '\n' +
+      /*console.log('# Released Pages: ' + releasedPagesCount + '\n' +
         '# Restored Pages: ' + restoredPagesCount + '\n' +
         '# Already Cached Pages: ' + alreadyCachedPagesCount + '\n' +
         '# Tiles Requested: ' + tilesRequestedCount);
@@ -1389,7 +1426,7 @@
       console.log("EntryCount:\t"   + this.usageTable.entryCount +
             "\nUsed:\t\t"   + cacheStatusData.used +
             "\nFree:\t\t"   + cacheStatusData.free +
-            "\nMarkedFree:\t"   + cacheStatusData.markedFree);
+            "\nMarkedFree:\t"   + cacheStatusData.markedFree);*/
 
       this.indirectionTable.update(this.cache);
       this.usageTable.clear();

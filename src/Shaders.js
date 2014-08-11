@@ -39,8 +39,13 @@ THREE.ShaderChunk["vt_pars_fragment"] = [
   "vec2 computeUvCoords( vec2 vUv ) {",
     "vec2 UvCoords;",
 
-    "vec3 pageData = texture2D( tCacheIndirection, vUv ).xyz;",   
-    "vec2 inPageOffset = fract( vUv * exp2( pageData.z ) ) * vCachePageSize;",
+    "vec3 pageData = texture2D( tCacheIndirection, vUv ).xyz;",
+    "float mipExp = exp2(pageData.z);",
+    "vec2 inPageOffset = fract(vUv * mipExp) * (vCachePageSize);",
+    //"vec2 inPageOffset = fract(vUv * mipExp);",
+    //"inPageOffset = (inPageOffset * ((136.0 - 4.0 * 2.0)/136.0 + 4.0/136.0));",
+    //"inPageOffset = (inPageOffset * ((136.0 - 4.0 * 2.0)/2048.0) + (4.0/136.0)/2048.0);",
+
     //withinPageCoord = withinPageCoord ∗ (page dimension−border width ∗ 2.0)/page dimension+ border width/page dimension;
 
     // gradient lengths and discontinuities

@@ -94,7 +94,7 @@ class Model:
 	def run(self):
 	
 		size = self.set_input()
-		level = int(math.log(size/(settings['tile']['size']),2))
+		level = int(math.log(size/(settings['tile']['size']), 2))
 
 		while level >= 0:	
 			for texture_type, value in settings['input']['texture_types'].iteritems():
@@ -120,7 +120,7 @@ class Tile:
 		self.level = level
 		self.tile_number = tile_number
 		self.output = settings['output'][format]
-		self.filename = '%i-%i.%s' % (self.level,self.tile_number,self.output['extension'])
+		self.filename = '%i-%i.%s' % (self.level, self.tile_number, self.output['extension'])
 		self.size = settings['tile']['size']
 		self.padding = settings['tile']['padding_per_side']
 		self.real_size = self.size+self.padding
@@ -182,6 +182,7 @@ class MipMap:
 	def save(self, directory):
 		path = os.path.join(directory, self.filename)
 		print '\n* Save MipMap... {Type: \'%s\', Resolution: (%d,%d)} as %s' % (self.type,self.resolution['x'],self.resolution['y'], path)
+
 		self.image.save(path, self.output['format'], quality = self.output['quality'])
 		
 	def create_tiles(self, path):
@@ -203,12 +204,14 @@ class MipMap:
 		tile = Tile(self.level, page_number)
 		tile.image = self.image.crop(tile.create_box(x,y))
 		tile.save(path)
+
 		return tile
 		
 def create_directory(a,b):
 	directory = os.path.join(a,b)
 	if not os.path.exists( directory ):
 		os.makedirs( directory )
+
 	return directory
 
 # ------------------------------------------------------------------------------
