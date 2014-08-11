@@ -7,22 +7,8 @@ var APP = {};
 (function () {
   "use strict";
 
-  /*global THREE,Detector,requestAnimationFrame*/
+  /*global VT,THREE,Detector,requestAnimationFrame*/
   /*jslint browser: true*/
-
-  APP.Config = {
-    enabled: true,
-    maxMipMapLevel: 4,
-    tileSize: 128,
-    tilePadding: 4,
-    cacheSize: 2048,
-    tileLocations: [],
-    texture_types : [
-      "mapDiffuse",
-      "mapSpecular",
-      "mapNormal"
-    ]
-  };
 
   /***************************************************************************
    * Global Variables
@@ -142,11 +128,11 @@ var APP = {};
     /**********************************************************************************/
 
       // create lights and add them to the scene
-      var lightFront = new THREE.PointLight(0xffffff, 3.0, 300); // light in front of model
+      var lightFront = new THREE.PointLight(0xffffff, 1.5, 200); // light in front of model
       lightFront.position.set(-25, -25, 100);
       scene.add(lightFront);
 
-      var lightBack = new THREE.PointLight(0xffffff, 3.0, 300); // light behind of model
+      var lightBack = new THREE.PointLight(0xffffff, 1.5, 200); // light behind of model
       lightBack.position.set(-25, -25, -100);
       scene.add(lightBack);
 
@@ -191,87 +177,19 @@ var APP = {};
     return false;
   };
 
-  APP.load = function (geometry, tileLocations) {
-    //
-    // create model
-    //
-
-    function duplicateForVirtualTexturing(geometry) {
-
-      var shader = THREE.ShaderLib.visible_tiles;
-      var uniforms = THREE.UniformsUtils.clone(shader.uniforms);
-
-      uniforms.fVirtualTextureSize.value = {
-        x: virtualTexture.size,
-        y: virtualTexture.size
-      };
-
-      uniforms.fMaximumMipMapLevel.value = virtualTexture.maxMipMapLevel;
-      uniforms.fTileCount.value = virtualTexture.tileCount;
-
-      var parameters = {
-        uniforms: uniforms,
-        fragmentShader: shader.fragmentShader,
-        vertexShader: shader.vertexShader,
-        side: THREE.DoubleSide
-      };
-
-      var materialVT = new THREE.ShaderMaterial(parameters);
-      var meshVT = new THREE.Mesh(geometry, materialVT);
-
-      virtualTexture.tileDetermination.scene.add(meshVT);
-    }
-
-    function createVirtualTextureMaterial() {
-      var type;
-      var shader = THREE.ShaderLib.render_with_vt;
-      var uniforms = THREE.UniformsUtils.clone(shader.uniforms);
-
-      for (type in virtualTexture.cache.textures) {
-        if (virtualTexture.cache.textures.hasOwnProperty(type)) {
-          uniforms[type].value = virtualTexture.cache.textures[type];
-        }
-      }
-
-      var pageSizeInTextureSpaceXY = {
-        x: virtualTexture.cache.usablePageSize / virtualTexture.cache.size.x,
-        y: virtualTexture.cache.usablePageSize / virtualTexture.cache.size.y
-      };
-
-      // init values
-      uniforms.tCacheIndirection.value = virtualTexture.indirectionTable.texture;
-      uniforms.vCachePageSize.value = pageSizeInTextureSpaceXY;
-      uniforms.vCacheSize.value = { x: virtualTexture.cache.width, y: virtualTexture.cache.height };
-
-      uniforms.vTextureSize.value = virtualTexture.size;
-      uniforms.fMaxMipMapLevel.value = virtualTexture.maxMipMapLevel;
-
-      uniforms.uNormalScale.value = { x: 1.0, y: 1.0 };
-      uniforms.enableDiffuse.value = true;
-      uniforms.enableSpecular.value = true;
-
-      var parameters = {
-        defines: { 'VIRTUAL_TEXTURE': true },
-        uniforms: uniforms,
-        fragmentShader: shader.fragmentShader,
-        vertexShader: shader.vertexShader,
-        side: THREE.DoubleSide,
-        lights: true
-      };
-
-      return new THREE.ShaderMaterial(parameters);
-    }
+  APP.load = function (geometry, config) {
 
     // create virtual texture
-    APP.Config.tileLocations = tileLocations;
-    virtualTexture = new THREE.VirtualTexture(renderer.context, APP.Config);
-
     geometry.computeTangents();
+    geometry.computeVertexNormals();
 
-    mesh = new THREE.Mesh(geometry, createVirtualTextureMaterial());
+    virtualTexture = new THREE.VirtualTexture(renderer.context, config);
+    var material = THREE.createVirtualTextureMaterial(virtualTexture);
+
+    mesh = new THREE.Mesh(geometry, material);
     scene.add(mesh);
 
-    duplicateForVirtualTexturing(geometry);
+    THREE.duplicateGeometryForVirtualTexturing(geometry, virtualTexture);
   };
 
 }());
